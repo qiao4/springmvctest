@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="url" value="jdbc:mysql://localhost/hebernate"/>
+		<property name="username" value="hi_new"/>
+		<property name="password" value="123"/>
+	</bean>
+	
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean" destroy-method="destroy">
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="annotatedPackages" value="classpath:/orm"/>
+		<property name="annotatedClasses">
+			<list>
+				<value>orm.Cat</value>
+				<value>table.Order</value>
+				<value>table.OrderItem</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="hibernate.c3p0.min_size">5</prop>
+				<prop key="hibernate.c3p0.max_size">5</prop>
+				<prop key="hibernate.c3p0.timeout">5</prop>
+				<prop key="hibernate.c3p0.max_statement">5</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<bean id="testlog" class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass">
+			<value>timer.TestJob</value>
+		</property>
+		<property name="jobDataAsMap">
+			<map>
+				<entry key="i"><ref bean="catService"/></entry>
+			</map>
+		</property>
+	</bean>
+	<bean id="simplejob" class="timer.SimpleJob"></bean>
+	<bean id="testjob" class="timer.TestJob"></bean>
+	<bean id="pojoqutarz" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject"><ref bean="testjob"/></property>
+		<property name="targetMethod"><value>run</value></property>
+	</bean>
+	
+	<bean id="testTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="testlog"></property>
+		<property name="cronExpression">
+			<value>59 * * * * ? *</value>
+		</property>
+	</bean>
+	<bean id="pojotri" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+		<property name="jobDetail" ref="pojoqutarz"/>
+		<property name="startDelay"><value>2000</value></property>
+		<property name="repeatInterval"><value>6000</value></property>
+	</bean>
+	
+	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="testTrigger"/>
+				<ref bean="pojotri"/>
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="catDao" class="orm.CatDaoImpl">
+		<property name="sessionFactory" ref="sessionFactory"/>
+	</bean>
+	<bean id="catService" class="orm.CatServiceImpl">
+		<property name="catDao" ref="catDao"/>
+	</bean>
+	<bean id="orderDao" class="dao.OrderDaoImpl">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<bean id="orderService" class="service.OrderServiceImpl">
+		<property name="orderDao" ref="orderDao"></property>
+	</bean>
+
+</beans>
